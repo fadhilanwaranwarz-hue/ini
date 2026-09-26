@@ -1,128 +1,653 @@
 <%- include('../layout/header') %>
 
-<div class="space-y-6">
-  <!-- Header Bar -->
-  <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-    <div>
-      <div class="flex items-center space-x-2">
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 animate-pulse">
-          <span class="w-2 h-2 rounded-full bg-rose-500 mr-1.5"></span>LIVE COUNT REAL-TIME
-        </span>
-        <span class="text-xs text-slate-400">| Auto-sync setiap 3 detik</span>
-      </div>
-      <h1 class="text-2xl font-black text-slate-800 tracking-tight mt-1">Perolehan Suara Pemilihan OSIS &amp; MPK</h1>
-      <p class="text-xs text-slate-500">Transparansi penghitungan suara digital Komisi Pemilihan Siswa.</p>
-    </div>
+  <!-- External CDNs for Rich Animations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
-    <!-- Quick Stats -->
-    <div class="flex items-center space-x-4">
-      <div class="text-right">
-        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Suara Masuk</p>
-        <p class="text-2xl font-black text-emerald-600" id="statTotalSuara"><%= totalSuara %> <span class="text-xs font-normal text-slate-500">/ <%= totalDPT %></span></p>
-      </div>
-      <div class="h-10 w-px bg-slate-200"></div>
-      <div class="text-right">
-        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Partisipasi DPT</p>
-        <p class="text-2xl font-black text-indigo-600" id="statPartisipasi">
-          <%= totalDPT > 0 ? ((totalSuara / totalDPT) * 100).toFixed(1) : 0 %>%
-        </p>
-      </div>
-    </div>
-  </div>
+  <style>
+    /* Shimmer glowing animated progress bar */
+    @keyframes shimmerBar {
+      0% {
+        background-position: 200% 0;
+      }
 
-  <!-- Cards Paslon (Perolehan Suara & Persentase) -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="candidatesGrid">
-    <% candidates.forEach(c => { 
-      const pct = totalSuara > 0 ? ((c.suaraCount / totalSuara) * 100).toFixed(1) : 0;
-    %>
-      <div class="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden flex flex-col transition hover:shadow-xl duration-300" id="card-<%= c.id %>">
-        <!-- Nomor Urut & Foto -->
-        <div class="relative bg-gradient-to-br from-slate-100 to-slate-200 h-52 flex items-center justify-center p-4">
-          <span class="absolute top-4 left-4 w-10 h-10 rounded-2xl bg-indigo-600 text-white font-black text-base flex items-center justify-center shadow-lg">
-            0<%= c.nomorUrut %>
-          </span>
-
-          <div class="absolute top-4 right-4 text-right">
-            <span class="text-2xl font-black text-indigo-700 font-mono" id="pct-<%= c.id %>"><%= pct %>%</span>
-          </div>
-
-          <% if (c.fotoUrl) { %>
-            <img src="<%= c.fotoUrl %>" alt="Paslon <%= c.nomorUrut %>" class="max-h-full object-contain drop-shadow-md">
-          <% } else { %>
-            <div class="text-center text-slate-400">
-              <i class="fa-solid fa-users text-5xl mb-2 text-slate-300"></i>
-              <p class="text-xs font-bold">Paslon 0<%= c.nomorUrut %></p>
-            </div>
-          <% } %>
-        </div>
-
-        <!-- Body Perolehan -->
-        <div class="p-6 flex-1 flex flex-col justify-between">
-          <div>
-            <h3 class="text-base font-extrabold text-slate-800 leading-snug"><%= c.namaKetua %></h3>
-            <p class="text-xs font-bold text-indigo-600">&amp; <%= c.namaWakil %></p>
-            <p class="text-[11px] text-slate-500 mt-2 line-clamp-2"><%= c.visi %></p>
-          </div>
-
-          <div class="mt-6 pt-4 border-t border-slate-100">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Perolehan Suara:</span>
-              <span class="text-2xl font-black text-slate-900 font-mono" id="count-<%= c.id %>"><%= c.suaraCount %></span>
-            </div>
-            
-            <!-- Progress Bar -->
-            <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden p-0.5 border border-slate-200">
-              <div id="bar-<%= c.id %>" class="bg-gradient-to-r from-blue-600 to-indigo-600 h-full rounded-full transition-all duration-700" style="width: <%= pct %>%"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% }) %>
-  </div>
-
-  <!-- Live Log Indicator -->
-  <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center justify-between text-xs text-slate-500">
-    <div class="flex items-center space-x-2">
-      <i class="fa-solid fa-arrows-rotate text-blue-500 animate-spin"></i>
-      <span>Sistem terhubung ke WebSocket / Live Polling Engine.</span>
-    </div>
-    <span id="lastUpdated" class="text-[11px] font-mono text-slate-400">Update Terakhir: <%= new Date().toLocaleTimeString('id-ID') %></span>
-  </div>
-</div>
-
-<script>
-  // Real-time polling setiap 3 detik
-  async function fetchLiveCount() {
-    try {
-      const res = await fetch('/api/live-count');
-      if (!res.ok) return;
-      const data = await res.json();
-      
-      const totalSuara = data.totalSuara;
-      const totalDPT = data.totalDPT;
-      const partisipasi = totalDPT > 0 ? ((totalSuara / totalDPT) * 100).toFixed(1) : 0;
-
-      document.getElementById('statTotalSuara').innerHTML = `${totalSuara} <span class="text-xs font-normal text-slate-500">/ ${totalDPT}</span>`;
-      document.getElementById('statPartisipasi').innerText = `${partisipasi}%`;
-      document.getElementById('lastUpdated').innerText = 'Update Terakhir: ' + new Date().toLocaleTimeString('id-ID');
-
-      data.candidates.forEach(c => {
-        const pct = totalSuara > 0 ? ((c.suaraCount / totalSuara) * 100).toFixed(1) : 0;
-        
-        const countEl = document.getElementById(`count-${c.id}`);
-        const pctEl = document.getElementById(`pct-${c.id}`);
-        const barEl = document.getElementById(`bar-${c.id}`);
-
-        if (countEl) countEl.innerText = c.suaraCount;
-        if (pctEl) pctEl.innerText = `${pct}%`;
-        if (barEl) barEl.style.width = `${pct}%`;
-      });
-    } catch (e) {
-      console.error('Live polling error:', e);
+      100% {
+        background-position: -200% 0;
+      }
     }
-  }
 
-  setInterval(fetchLiveCount, 3000);
-</script>
+    .animated-shimmer {
+      background-size: 250% 100% !important;
+      animation: shimmerBar 3.5s infinite linear;
+    }
 
-<%- include('../layout/footer') %>
+    /* Float animation for decorative elements */
+    @keyframes floatSlow {
+
+      0%,
+      100% {
+        transform: translateY(0px) rotate(0deg);
+      }
+
+      50% {
+        transform: translateY(-8px) rotate(2deg);
+      }
+    }
+
+    .float-slow {
+      animation: floatSlow 4s ease-in-out infinite;
+    }
+
+    /* Pulse glowing ring */
+    @keyframes pulseGlow {
+
+      0%,
+      100% {
+        opacity: 0.6;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.05);
+      }
+    }
+
+    .pulse-glow {
+      animation: pulseGlow 2.5s ease-in-out infinite;
+    }
+
+    /* Crown bounce effect */
+    @keyframes crownBounce {
+
+      0%,
+      100% {
+        transform: translateY(0) scale(1);
+      }
+
+      50% {
+        transform: translateY(-4px) scale(1.1);
+      }
+    }
+
+    .crown-bounce {
+      animation: crownBounce 2s ease-in-out infinite;
+    }
+  </style>
+
+  <div class="space-y-6 relative overflow-hidden pb-12">
+    <!-- Ambient background glow orbs -->
+    <div
+      class="absolute -top-20 -left-20 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse">
+    </div>
+    <div
+      class="absolute top-1/3 -right-20 w-96 h-96 bg-indigo-400/10 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse"
+      style="animation-delay: 1.5s;"></div>
+
+    <!-- Header Broadcast Banner -->
+    <div
+      class="relative bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-indigo-900/50 overflow-hidden">
+      <!-- Decorative background elements -->
+      <div class="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-2xl"></div>
+      <div class="absolute bottom-0 left-1/3 -mb-10 w-48 h-48 bg-emerald-500/10 rounded-full blur-xl"></div>
+
+      <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div>
+          <div class="flex items-center space-x-2.5 mb-2 flex-wrap gap-y-2">
+            <!-- Live Status Radar Beacon -->
+            <span
+              class="inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm shadow-rose-500/20">
+              <span class="relative flex h-2.5 w-2.5 mr-2">
+                <span
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+              </span>
+              LIVE BROADCAST REAL-TIME
+            </span>
+
+            <span
+              class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white/10 text-slate-300 border border-white/10">
+              <i class="fa-solid fa-arrows-rotate fa-spin mr-1.5 text-blue-400"></i> Auto-Sync 3 Detik
+            </span>
+
+            <% if (session && session.isOpen) { %>
+              <span
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <i class="fa-solid fa-door-open mr-1"></i> Sesi Dibuka
+              </span>
+              <% } else { %>
+                <span
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <i class="fa-solid fa-lock mr-1"></i> Sesi Ditutup
+                </span>
+                <% } %>
+          </div>
+
+          <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2">
+            <span>Quick Count Pemilihan OSIS &amp; MPK</span>
+            <span class="text-indigo-400 text-lg sm:text-2xl font-normal hidden sm:inline">|</span>
+            <span class="text-xs sm:text-sm font-semibold text-indigo-300/90 hidden sm:inline">Transparansi Digital
+              Real-Time</span>
+          </h1>
+          <p class="text-xs text-slate-400 mt-1 max-w-2xl">
+            Visualisasi dinamis perolehan suara sah digital secara langsung dari bilik suara. Terenkripsi, mandiri,
+            jujur, dan adil.
+          </p>
+        </div>
+
+        <!-- Action & Sound Controls -->
+        <div class="flex items-center space-x-3 self-start lg:self-auto">
+          <button type="button" id="btnSoundToggle" onclick="toggleAudioChime()"
+            class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-bold text-slate-200 transition flex items-center space-x-2">
+            <i class="fa-solid fa-volume-high text-amber-400" id="soundIcon"></i>
+            <span id="soundText">Suara: Aktif</span>
+          </button>
+
+          <button type="button" onclick="triggerCelebrationConfetti()"
+            class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black rounded-xl shadow-lg shadow-amber-500/30 transition transform hover:scale-105 active:scale-95 flex items-center space-x-1.5">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>Rayakan Suara 🎉</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Stat Counters Row -->
+      <div class="mt-6 pt-6 border-t border-indigo-900/60 grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-white/5 backdrop-blur-md rounded-2xl p-3.5 border border-white/10">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Suara Sah</p>
+          <div class="flex items-baseline space-x-1 mt-0.5">
+            <span class="text-2xl sm:text-3xl font-black text-emerald-400 font-mono" id="statTotalSuara">
+              <%= totalSuara %>
+            </span>
+            <span class="text-xs text-slate-400">/ <span id="statTotalDpt">
+                <%= totalDPT %>
+              </span> DPT</span>
+          </div>
+        </div>
+
+        <div class="bg-white/5 backdrop-blur-md rounded-2xl p-3.5 border border-white/10">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Tingkat Partisipasi</p>
+          <div class="flex items-baseline space-x-1 mt-0.5">
+            <span class="text-2xl sm:text-3xl font-black text-indigo-300 font-mono" id="statPartisipasi">
+              <%= totalDPT> 0 ? ((totalSuara / totalDPT) * 100).toFixed(1) : 0 %>
+            </span>
+            <span class="text-sm font-bold text-indigo-300">%</span>
+          </div>
+        </div>
+
+        <div class="bg-white/5 backdrop-blur-md rounded-2xl p-3.5 border border-white/10">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Belum Menggunakan Hak</p>
+          <div class="flex items-baseline space-x-1 mt-0.5">
+            <span class="text-2xl sm:text-3xl font-black text-amber-400 font-mono" id="statBelumVote">
+              <%= totalDPT - totalSuara %>
+            </span>
+            <span class="text-xs text-slate-400">siswa</span>
+          </div>
+        </div>
+
+        <div class="bg-white/5 backdrop-blur-md rounded-2xl p-3.5 border border-white/10">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Status Server TPS</p>
+          <div class="flex items-center space-x-2 mt-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-xs font-bold text-emerald-300">Sinkronisasi Aktif</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards Paslon (Perolehan Suara & Animasi) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="candidatesGrid">
+      <% const maxSuaraAwal=Math.max(...candidates.map(c=> c.suaraCount), 0);
+        candidates.forEach(c => {
+        const pct = totalSuara > 0 ? ((c.suaraCount / totalSuara) * 100).toFixed(1) : 0;
+        const isLeading = maxSuaraAwal > 0 && c.suaraCount === maxSuaraAwal;
+        const initialBarWidth = Math.max(parseFloat(pct) || 0, 2);
+        %>
+        <div
+          class="candidate-card bg-white rounded-3xl border border-slate-200/90 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden flex flex-col relative group transform hover:-translate-y-1.5"
+          id="card-<%= c.id %>" data-candidate-id="<%= c.id %>">
+
+          <!-- Leading / Winner Golden Banner Badge -->
+          <div id="leading-badge-<%= c.id %>"
+            class="<%= isLeading ? 'flex' : 'hidden' %> absolute top-3 inset-x-3 z-20 items-center justify-center bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-900 py-1 px-3 rounded-xl shadow-lg border border-amber-300 font-black text-[11px] uppercase tracking-wider space-x-1.5 animate-bounce">
+            <i class="fa-solid fa-crown text-amber-900 text-xs crown-bounce"></i>
+            <span>Unggul Sementara</span>
+          </div>
+
+          <!-- Top Card: Nomor Urut, Persentase, & Foto dengan Efek Hover -->
+          <div
+            class="relative bg-gradient-to-br from-slate-100 via-indigo-50/40 to-slate-200 h-56 flex items-center justify-center p-4 overflow-hidden pt-9">
+            <!-- Nomor Urut Badge -->
+            <span
+              class="absolute top-4 left-4 w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-lg flex items-center justify-center shadow-lg shadow-indigo-600/30 z-10">
+              0<%= c.nomorUrut %>
+            </span>
+
+            <!-- Persentase Suara Badge -->
+            <div class="absolute top-4 right-4 text-right z-10">
+              <span
+                class="px-3 py-1 rounded-2xl bg-white/95 backdrop-blur shadow-md border border-slate-200 text-xl font-black text-indigo-700 font-mono"
+                id="pct-<%= c.id %>">
+                <%= pct %>%
+              </span>
+            </div>
+
+            <!-- Foto Paslon -->
+            <% if (c.fotoUrl) { %>
+              <img src="<%= c.fotoUrl %>" alt="Paslon <%= c.nomorUrut %>"
+                class="max-h-full object-contain drop-shadow-md transition-transform duration-500 group-hover:scale-105">
+              <% } else { %>
+                <div class="text-center text-slate-400">
+                  <i class="fa-solid fa-users text-5xl mb-2 text-indigo-300"></i>
+                  <p class="text-xs font-bold text-slate-500">Paslon 0<%= c.nomorUrut %>
+                  </p>
+                </div>
+                <% } %>
+          </div>
+
+          <!-- Body Card Perolehan Suara -->
+          <div class="p-6 flex-1 flex flex-col justify-between space-y-4">
+            <div>
+              <h3 class="text-lg font-black text-slate-800 leading-snug">
+                <%= c.namaKetua %>
+              </h3>
+              <p class="text-xs font-bold text-indigo-600 flex items-center mt-0.5">
+                <i class="fa-solid fa-user-tag mr-1 text-[11px]"></i>&amp; <%= c.namaWakil %>
+              </p>
+              <div class="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Visi
+                  Paslon:</span>
+                <p class="text-slate-600 text-[11px] line-clamp-2">
+                  <%= c.visi %>
+                </p>
+              </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Perolehan Suara:</span>
+                <div class="flex items-baseline space-x-1">
+                  <span class="text-3xl font-black text-slate-900 font-mono tracking-tight" id="count-<%= c.id %>">
+                    <%= c.suaraCount %>
+                  </span>
+                  <span class="text-xs text-slate-400 font-medium">suara</span>
+                </div>
+              </div>
+
+              <!-- Progress Bar dengan Animated Shimmer Gradient -->
+              <div
+                class="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-200/80 shadow-inner">
+                <div id="bar-<%= c.id %>"
+                  class="animated-shimmer h-full rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600"
+                  <%- `style="width: ${initialBarWidth}%;"` %>></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <% }) %>
+    </div>
+
+    <!-- Interactive Graphic & Live Comparison Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Kolom 1: Donut Chart Realtime -->
+      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-md flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="text-sm font-extrabold text-slate-800">Komposisi Perolehan Suara</h3>
+            <p class="text-xs text-slate-500">Diagram perbandingan persentase suara</p>
+          </div>
+          <span class="p-2 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-bold">
+            <i class="fa-solid fa-chart-pie"></i>
+          </span>
+        </div>
+
+        <div class="relative w-full aspect-square max-h-56 mx-auto flex items-center justify-center my-2">
+          <canvas id="voteDonutChart"></canvas>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 text-center">
+          <span class="text-[11px] font-semibold text-slate-400">Total <%= totalSuara %> suara sah terhitung di
+              sistem</span>
+        </div>
+      </div>
+
+      <!-- Kolom 2 & 3: Live Vote Velocity / Activity Monitor -->
+      <div
+        class="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200 shadow-md flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-sm font-extrabold text-slate-800 flex items-center">
+                <i class="fa-solid fa-wave-square text-emerald-600 mr-2"></i>
+                Monitoring Jalur Pemilihan &amp; Log Sinkronisasi
+              </h3>
+              <p class="text-xs text-slate-500">Aktivitas transmisi suara masuk dan integritas bilik digital</p>
+            </div>
+            <span id="lastUpdated"
+              class="text-xs font-mono font-bold px-3 py-1 rounded-xl bg-slate-100 text-slate-600 border border-slate-200">
+              Sinkron: <%= new Date().toLocaleTimeString('id-ID') %>
+            </span>
+          </div>
+
+          <!-- Live Metrics Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Integritas Hash</span>
+              <span class="text-xs font-black text-emerald-600 font-mono">
+                <i class="fa-solid fa-shield-check mr-1"></i>TERVERIFIKASI
+              </span>
+            </div>
+            <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Kerahasiaan Suara</span>
+              <span class="text-xs font-black text-blue-600">
+                <i class="fa-solid fa-user-secret mr-1"></i>ANONIM (LUBER)
+              </span>
+            </div>
+            <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Audit Trail</span>
+              <span class="text-xs font-black text-purple-600 font-mono">
+                <i class="fa-solid fa-fingerprint mr-1"></i>TOKEN SEKALI PAKAI
+              </span>
+            </div>
+          </div>
+
+          <div
+            class="p-4 rounded-2xl bg-gradient-to-r from-indigo-50/60 to-blue-50/60 border border-indigo-100 text-xs text-slate-600 flex items-start space-x-3">
+            <div class="p-2 rounded-xl bg-indigo-600 text-white font-bold text-xs flex-shrink-0">
+              <i class="fa-solid fa-circle-info"></i>
+            </div>
+            <div class="space-y-1">
+              <p class="font-bold text-slate-800">Prinsip Demokrasi Digital Siswa:</p>
+              <p class="text-[11px] text-slate-600">
+                Setiap pemilih hanya dapat memberikan satu suara sah dengan token unik 8-karakter yang hangus otomatis
+                setelah pencoblosan selesai. Quick count ini bersifat otomatis dan real-time tanpa manipulasi.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+          <div class="flex items-center space-x-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            <span>Engine Polling Aktif (HTTP GET /api/live-count)</span>
+          </div>
+          <span class="font-mono text-[11px]">Latensi: ~15ms</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="application/json" id="initialCandidatesData"><%- JSON.stringify(candidates) %></script>
+  <script>
+    // Initial state tracking
+    let previousTotalSuara = parseInt(document.getElementById('statTotalSuara')?.innerText) || 0;
+    let audioChimeEnabled = true;
+    let audioContext = null;
+
+    // Web Audio Synthesizer: Sound Chime when votes update
+    function playVoteChime() {
+      if (!audioChimeEnabled) return;
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioContext.state === 'suspended') {
+          audioContext.resume();
+        }
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        osc.type = 'sine';
+        // Pleasant high chime chord (880Hz to 1174Hz)
+        osc.frequency.setValueAtTime(880, audioContext.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1174.66, audioContext.currentTime + 0.15);
+
+        gain.gain.setValueAtTime(0.12, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.6);
+
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+
+        osc.start();
+        osc.stop(audioContext.currentTime + 0.6);
+      } catch (e) {
+        console.warn('Audio chime note error:', e);
+      }
+    }
+
+    function toggleAudioChime() {
+      audioChimeEnabled = !audioChimeEnabled;
+      const soundIcon = document.getElementById('soundIcon');
+      const soundText = document.getElementById('soundText');
+      if (audioChimeEnabled) {
+        soundIcon.className = 'fa-solid fa-volume-high text-amber-400';
+        soundText.innerText = 'Suara: Aktif';
+        playVoteChime();
+      } else {
+        soundIcon.className = 'fa-solid fa-volume-xmark text-slate-400';
+        soundText.innerText = 'Suara: Bisu';
+      }
+    }
+
+    // Confetti celebration effect
+    function triggerCelebrationConfetti() {
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+        setTimeout(() => {
+          confetti({
+            particleCount: 50,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 }
+          });
+          confetti({
+            particleCount: 50,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 }
+          });
+        }, 250);
+      }
+    }
+
+    // Smooth number easing animation
+    function animateNumber(element, start, end, duration = 800, isFloat = false, suffix = '') {
+      if (!element) return;
+      if (start === end) {
+        element.innerText = isFloat ? end.toFixed(1) + suffix : end + suffix;
+        return;
+      }
+      const startTime = performance.now();
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // easeOutCubic
+        const ease = 1 - Math.pow(1 - progress, 3);
+        const current = start + (end - start) * ease;
+        element.innerText = isFloat ? current.toFixed(1) + suffix : Math.round(current) + suffix;
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        } else {
+          element.innerText = isFloat ? end.toFixed(1) + suffix : end + suffix;
+        }
+      }
+      requestAnimationFrame(update);
+    }
+
+    // Inisialisasi Chart.js Donut Chart
+    let donutChart = null;
+    const initialCandidates = JSON.parse(document.getElementById('initialCandidatesData')?.textContent || '[]');
+    const chartColors = [
+      '#3b82f6', // Paslon 1 (Blue)
+      '#6366f1', // Paslon 2 (Indigo)
+      '#a855f7', // Paslon 3 (Purple)
+      '#ec4899', // Paslon 4
+      '#14b8a6'  // Paslon 5
+    ];
+
+    function initChart() {
+      const ctx = document.getElementById('voteDonutChart');
+      if (!ctx) return;
+
+      const labels = initialCandidates.map(c => `Paslon 0${c.nomorUrut} (${c.namaKetua.split(' ')[0]})`);
+      const data = initialCandidates.map(c => c.suaraCount);
+
+      donutChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data.every(v => v === 0) ? [1, 1, 1] : data,
+            backgroundColor: chartColors.slice(0, labels.length),
+            borderWidth: 3,
+            borderColor: '#ffffff',
+            hoverOffset: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                boxWidth: 12,
+                font: {
+                  family: 'Plus Jakarta Sans',
+                  size: 11,
+                  weight: 'bold'
+                },
+                padding: 12
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  const val = context.raw || 0;
+                  return ` ${val} Suara Sah`;
+                }
+              }
+            }
+          },
+          cutout: '68%',
+          animation: {
+            animateScale: true,
+            animateRotate: true,
+            duration: 1200
+          }
+        }
+      });
+    }
+
+    // Real-time polling live count
+    async function fetchLiveCount() {
+      try {
+        const res = await fetch('/api/live-count');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const newTotalSuara = data.totalSuara;
+        const totalDPT = data.totalDPT;
+        const newPartisipasi = totalDPT > 0 ? (newTotalSuara / totalDPT) * 100 : 0;
+        const belumVote = totalDPT - newTotalSuara;
+
+        // Cek jika ada suara baru yang masuk
+        if (newTotalSuara > previousTotalSuara) {
+          playVoteChime();
+          triggerCelebrationConfetti();
+        }
+
+        // Animasi counter statistik utama
+        const statTotalSuaraEl = document.getElementById('statTotalSuara');
+        const statPartisipasiEl = document.getElementById('statPartisipasi');
+        const statBelumVoteEl = document.getElementById('statBelumVote');
+        const statTotalDptEl = document.getElementById('statTotalDpt');
+
+        if (statTotalSuaraEl) {
+          const cur = parseInt(statTotalSuaraEl.innerText) || 0;
+          animateNumber(statTotalSuaraEl, cur, newTotalSuara, 600, false);
+        }
+        if (statPartisipasiEl) {
+          const cur = parseFloat(statPartisipasiEl.innerText) || 0;
+          animateNumber(statPartisipasiEl, cur, newPartisipasi, 600, true);
+        }
+        if (statBelumVoteEl) {
+          const cur = parseInt(statBelumVoteEl.innerText) || 0;
+          animateNumber(statBelumVoteEl, cur, belumVote, 600, false);
+        }
+        if (statTotalDptEl) {
+          statTotalDptEl.innerText = totalDPT;
+        }
+
+        document.getElementById('lastUpdated').innerText = 'Sinkron: ' + new Date().toLocaleTimeString('id-ID');
+
+        // Tentukan suara tertinggi
+        const maxVotes = Math.max(...data.candidates.map(c => c.suaraCount), 0);
+
+        // Update masing-masing kandidat
+        data.candidates.forEach(c => {
+          const pct = newTotalSuara > 0 ? ((c.suaraCount / newTotalSuara) * 100).toFixed(1) : 0;
+
+          const countEl = document.getElementById(`count-${c.id}`);
+          const pctEl = document.getElementById(`pct-${c.id}`);
+          const barEl = document.getElementById(`bar-${c.id}`);
+          const cardEl = document.getElementById(`card-${c.id}`);
+          const leadingBadge = document.getElementById(`leading-badge-${c.id}`);
+
+          if (countEl) {
+            const curVal = parseInt(countEl.innerText) || 0;
+            animateNumber(countEl, curVal, c.suaraCount, 600, false);
+          }
+          if (pctEl) {
+            pctEl.innerText = `${pct}%`;
+          }
+          if (barEl) {
+            barEl.style.width = `${Math.max(parseFloat(pct), 2)}%`;
+          }
+
+          // Tampilkan mahkota / golden badge untuk pemuncak suara
+          const isLeading = maxVotes > 0 && c.suaraCount === maxVotes;
+          if (leadingBadge) {
+            if (isLeading) {
+              leadingBadge.classList.remove('hidden');
+              leadingBadge.classList.add('flex');
+            } else {
+              leadingBadge.classList.add('hidden');
+              leadingBadge.classList.remove('flex');
+            }
+          }
+
+          if (cardEl) {
+            if (isLeading) {
+              cardEl.classList.add('ring-2', 'ring-amber-400', 'shadow-amber-200/50');
+            } else {
+              cardEl.classList.remove('ring-2', 'ring-amber-400', 'shadow-amber-200/50');
+            }
+          }
+        });
+
+        // Update Chart Donut
+        if (donutChart) {
+          const counts = data.candidates.map(c => c.suaraCount);
+          donutChart.data.datasets[0].data = counts.every(v => v === 0) ? [1, 1, 1] : counts;
+          donutChart.update('active');
+        }
+
+        previousTotalSuara = newTotalSuara;
+      } catch (e) {
+        console.error('Live polling error:', e);
+      }
+    }
+
+    // Start chart and polling on DOM content loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      initChart();
+      setInterval(fetchLiveCount, 3000);
+    });
+  </script>
+
+  <%- include('../layout/footer') %>

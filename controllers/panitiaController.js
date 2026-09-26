@@ -128,3 +128,32 @@ exports.verifikasiVoter = async (req, res) => {
     res.redirect('/panitia/voters');
   }
 };
+
+// ─── TAMBAH PEMILIH DPT BARU (DI MEJA TPS) ──────────────────────────────────
+exports.doAddVoter = async (req, res) => {
+  const { nisn, nama, kelas } = req.body;
+  try {
+    if (!nisn || !nama || !kelas) {
+      req.flash('error', 'Semua kolom (NISN, Nama Lengkap, Kelas) wajib diisi.');
+      return res.redirect('/panitia/voters');
+    }
+    const cleanNisn = nisn.trim();
+    const cleanNama = nama.trim();
+    const cleanKelas = kelas.trim();
+
+    await prisma.voter.create({
+      data: {
+        nisn: cleanNisn,
+        nama: cleanNama,
+        kelas: cleanKelas,
+      },
+    });
+
+    await logAudit(req, 'ADD_VOTER_TPS', `Panitia mendaftarkan pemilih baru "${cleanNama}" (NISN: ${cleanNisn}, Kelas: ${cleanKelas}).`);
+    req.flash('success', `Pemilih baru <strong>${cleanNama}</strong> (${cleanNisn} - ${cleanKelas}) berhasil didaftarkan ke DPT. Silakan lakukan penerbitan token.`);
+    res.redirect('/panitia/voters');
+  } catch (e) {
+    req.flash('error', 'Gagal mendaftarkan pemilih: ' + (e.code === 'P2002' ? 'NISN tersebut sudah terdaftar di DPT.' : e.message));
+    res.redirect('/panitia/voters');
+  }
+};

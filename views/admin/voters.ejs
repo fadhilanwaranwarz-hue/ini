@@ -7,23 +7,29 @@
         <i class="fa-solid fa-id-card text-teal-600 mr-2"></i>
         Daftar Pemilih Tetap (DPT) &amp; Status Token
       </h1>
-      <p class="text-xs text-slate-500">Monitoring kehadiran siswa, status penggunaan token sekali pakai, dan kontrol reset.</p>
+      <p class="text-xs text-slate-500">Monitoring kehadiran siswa, penambahan DPT, status penggunaan token sekali pakai, dan kontrol reset.</p>
     </div>
-    <div class="flex items-center space-x-2">
+    <div class="flex items-center space-x-2 flex-wrap gap-2">
       <span class="text-xs font-semibold px-3 py-1.5 rounded-xl bg-teal-50 text-teal-700 border border-teal-200">
         Total DPT: <strong><%= voters.length %></strong> Siswa
       </span>
       <span class="text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
         Sudah Memilih: <strong><%= voters.filter(v => v.hasVoted).length %></strong>
       </span>
+      <button type="button" onclick="document.getElementById('modalTambahPemilih').classList.remove('hidden')"
+        class="inline-flex items-center px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-md shadow-teal-600/20 transition">
+        <i class="fa-solid fa-user-plus mr-1.5"></i>
+        <span>Tambah Pemilih</span>
+      </button>
     </div>
   </div>
 
   <!-- Table Container -->
   <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+    <div class="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <input type="text" id="voterSearch" onkeyup="filterVoterTable()" placeholder="Cari NISN, nama siswa, atau kelas..."
-        class="w-full max-w-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 transition">
+        class="w-full sm:w-80 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 transition">
+      <p class="text-[11px] text-slate-400">Total data tercatat: <strong><%= voters.length %></strong> pemilih</p>
     </div>
 
     <div class="overflow-x-auto">
@@ -75,23 +81,93 @@
                 <%= v.votedAt ? new Date(v.votedAt).toLocaleString('id-ID') : '-' %>
               </td>
               <td class="py-3 px-4 text-center">
-                <% if (v.hasVoted || v.token) { %>
-                  <form action="/admin/voters/<%= v.id %>/reset" method="POST" class="inline"
-                    onsubmit="return confirm('Reset status hak suara pemilih ini? Tindakan ini akan mengosongkan status memilih dan token.')">
-                    <button type="submit" title="Reset Status Voting"
-                      class="px-2.5 py-1 text-[11px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition">
-                      <i class="fa-solid fa-rotate-left mr-1"></i>Reset
-                    </button>
-                  </form>
-                <% } else { %>
-                  <span class="text-slate-300">-</span>
-                <% } %>
+                <div class="flex items-center justify-center space-x-1.5">
+                  <% if (v.hasVoted || v.token) { %>
+                    <form action="/admin/voters/<%= v.id %>/reset" method="POST" class="inline"
+                      onsubmit="return confirm('Reset status hak suara pemilih <%= v.nama %>? Status memilih dan token akan dikosongkan.')">
+                      <button type="submit" title="Reset Status Voting"
+                        class="px-2.5 py-1 text-[11px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition">
+                        <i class="fa-solid fa-rotate-left mr-1"></i>Reset
+                      </button>
+                    </form>
+                  <% } %>
+
+                  <% if (!v.hasVoted) { %>
+                    <form action="/admin/voters/<%= v.id %>/delete" method="POST" class="inline"
+                      onsubmit="return confirm('Hapus pemilih <%= v.nama %> (<%= v.nisn %>) dari daftar DPT?')">
+                      <button type="submit" title="Hapus Pemilih dari DPT"
+                        class="px-2.5 py-1 text-[11px] font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition">
+                        <i class="fa-solid fa-trash-can mr-1"></i>Hapus
+                      </button>
+                    </form>
+                  <% } %>
+                </div>
               </td>
             </tr>
           <% }) %>
         </tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- Modal Tambah Pemilih Baru -->
+<div id="modalTambahPemilih" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+      <div class="flex items-center space-x-2">
+        <div class="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center font-bold text-sm">
+          <i class="fa-solid fa-user-plus"></i>
+        </div>
+        <h3 class="text-sm font-extrabold text-slate-800">Tambah Pemilih Baru (DPT)</h3>
+      </div>
+      <button type="button" onclick="document.getElementById('modalTambahPemilih').classList.add('hidden')"
+        class="text-slate-400 hover:text-slate-600 text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <form action="/admin/voters/add" method="POST" class="p-5 space-y-4">
+      <div>
+        <label for="nisn" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+          Nomor Induk Siswa Nasional (NISN) <span class="text-red-500">*</span>
+        </label>
+        <input type="text" id="nisn" name="nisn" required maxlength="20"
+          class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition"
+          placeholder="Contoh: 0051234099">
+        <p class="text-[10px] text-slate-400 mt-1">Pastikan nomor NISN unik dan valid.</p>
+      </div>
+
+      <div>
+        <label for="nama" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+          Nama Lengkap Siswa <span class="text-red-500">*</span>
+        </label>
+        <input type="text" id="nama" name="nama" required
+          class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition"
+          placeholder="Contoh: Muhammad Farhan Al-Fatih">
+      </div>
+
+      <div>
+        <label for="kelas" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+          Kelas / Rombel <span class="text-red-500">*</span>
+        </label>
+        <input type="text" id="kelas" name="kelas" required
+          class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition"
+          placeholder="Contoh: XII IPA 2 atau XI IPS 1">
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
+        <button type="button" onclick="document.getElementById('modalTambahPemilih').classList.add('hidden')"
+          class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 transition">
+          Batal
+        </button>
+        <button type="submit"
+          class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-md shadow-teal-600/20 transition flex items-center space-x-1.5">
+          <i class="fa-solid fa-floppy-disk"></i>
+          <span>Simpan Pemilih</span>
+        </button>
+      </div>
+    </form>
   </div>
 </div>
 

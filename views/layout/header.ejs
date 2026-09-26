@@ -34,11 +34,32 @@
       }
     }
   </script>
+  <!-- Chart.js & Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <style>
     @media print {
       .no-print { display: none !important; }
       body { background: white !important; font-size: 11pt; }
     }
+    @keyframes shimmerBar {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .animated-shimmer {
+      background-size: 250% 100% !important;
+      animation: shimmerBar 3.5s infinite linear;
+    }
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-8px) rotate(2deg); }
+    }
+    .float-slow { animation: floatSlow 4s ease-in-out infinite; }
+    @keyframes crownBounce {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-4px) scale(1.1); }
+    }
+    .crown-bounce { animation: crownBounce 2s ease-in-out infinite; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
@@ -71,6 +92,9 @@
           </a>
           <a href="/admin/voters" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 text-slate-700 transition">
             <i class="fa-solid fa-id-card mr-1.5 text-teal-600"></i>DPT Pemilih
+          </a>
+          <a href="/admin/panitia" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 text-slate-700 transition">
+            <i class="fa-solid fa-user-shield mr-1.5 text-amber-600"></i>Panitia TPS
           </a>
           <a href="/admin/quick-count" class="px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 text-slate-700 transition">
             <i class="fa-solid fa-square-poll-vertical mr-1.5 text-emerald-600"></i>Quick Count
@@ -128,6 +152,9 @@
       </a>
       <a href="/admin/voters" class="flex items-center px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 text-slate-700">
         <i class="fa-solid fa-id-card mr-2 text-teal-600 w-5"></i>DPT Pemilih
+      </a>
+      <a href="/admin/panitia" class="flex items-center px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 text-slate-700">
+        <i class="fa-solid fa-user-shield mr-2 text-amber-600 w-5"></i>Panitia TPS
       </a>
       <a href="/admin/quick-count" class="flex items-center px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 text-slate-700">
         <i class="fa-solid fa-square-poll-vertical mr-2 text-emerald-600 w-5"></i>Quick Count

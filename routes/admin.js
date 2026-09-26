@@ -19,6 +19,12 @@ router.get('/audit-log',        ctrl.auditLog);
 router.get('/quick-count',      ctrl.quickCount);
 router.get('/api/quick-count',  ctrl.apiQuickCount);
 router.get('/voters',           ctrl.listVoters);
-router.post('/voters/:id/reset',ctrl.resetVoter);
+router.post('/voters/add',          ctrl.doAddVoter);
+router.post('/voters/:id/reset',    ctrl.resetVoter);
+router.post('/voters/:id/delete',   ctrl.doDeleteVoter);
+
+router.get('/panitia',              ctrl.listPanitia);
+router.post('/panitia/add',         ctrl.doAddPanitia);
+router.post('/panitia/:id/delete',  ctrl.doDeletePanitia);
 
 module.exports = router;

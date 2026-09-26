@@ -226,3 +226,125 @@ exports.resetVoter = async (req, res) => {
     res.redirect('/admin/voters');
   }
 };
+
+exports.doAddVoter = async (req, res) => {
+  const { nisn, nama, kelas } = req.body;
+  try {
+    if (!nisn || !nama || !kelas) {
+      req.flash('error', 'Semua kolom (NISN, Nama Siswa, Kelas) wajib diisi.');
+      return res.redirect('/admin/voters');
+    }
+    const cleanNisn = nisn.trim();
+    const cleanNama = nama.trim();
+    const cleanKelas = kelas.trim();
+
+    await prisma.voter.create({
+      data: {
+        nisn: cleanNisn,
+        nama: cleanNama,
+        kelas: cleanKelas,
+      },
+    });
+    await logAudit(req, 'ADD_VOTER', `Pemilih baru "${cleanNama}" (${cleanNisn}) kelas ${cleanKelas} ditambahkan oleh admin.`);
+    req.flash('success', `Pemilih ${cleanNama} (${cleanNisn}) berhasil ditambahkan ke DPT.`);
+    res.redirect('/admin/voters');
+  } catch (e) {
+    req.flash('error', 'Gagal menambahkan pemilih: ' + (e.code === 'P2002' ? 'NISN sudah terdaftar.' : e.message));
+    res.redirect('/admin/voters');
+  }
+};
+
+exports.doDeleteVoter = async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    const voter = await prisma.voter.findUnique({ where: { id } });
+    if (!voter) {
+      req.flash('error', 'Pemilih tidak ditemukan.');
+      return res.redirect('/admin/voters');
+    }
+    if (voter.hasVoted) {
+      req.flash('error', 'Pemilih yang sudah menggunakan hak suara tidak dapat dihapus.');
+      return res.redirect('/admin/voters');
+    }
+    await prisma.voter.delete({ where: { id } });
+    await logAudit(req, 'DELETE_VOTER', `Pemilih "${voter.nama}" (${voter.nisn}) dihapus dari DPT.`);
+    req.flash('success', `Pemilih ${voter.nama} berhasil dihapus.`);
+    res.redirect('/admin/voters');
+  } catch (e) {
+    req.flash('error', 'Gagal menghapus pemilih: ' + e.message);
+    res.redirect('/admin/voters');
+  }
+};
+
+// ─── PANITIA MANAGEMENT ───────────────────────────────────────────────────
+exports.listPanitia = async (req, res) => {
+  try {
+    const panitiaList = await prisma.user.findMany({
+      where: { role: 'PANITIA_TPS' },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.render('admin/panitia', {
+      title: 'Kelola Panitia TPS – Admin',
+      panitiaList,
+    });
+  } catch (e) {
+    req.flash('error', 'Gagal memuat daftar panitia: ' + e.message);
+    res.redirect('/admin/dashboard');
+  }
+};
+
+exports.doAddPanitia = async (req, res) => {
+  const { nama, username, password } = req.body;
+  try {
+    if (!nama || !username || !password) {
+      req.flash('error', 'Nama, Username, dan Password wajib diisi.');
+      return res.redirect('/admin/panitia');
+    }
+    const cleanUsername = username.trim().toLowerCase();
+    const cleanNama = nama.trim();
+
+    if (cleanUsername.length < 3) {
+      req.flash('error', 'Username minimal 3 karakter.');
+      return res.redirect('/admin/panitia');
+    }
+    if (password.length < 6) {
+      req.flash('error', 'Password minimal 6 karakter.');
+      return res.redirect('/admin/panitia');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await prisma.user.create({
+      data: {
+        nama: cleanNama,
+        username: cleanUsername,
+        password: hashedPassword,
+        role: 'PANITIA_TPS',
+      },
+    });
+
+    await logAudit(req, 'ADD_PANITIA', `Akun panitia TPS "${cleanNama}" (@${cleanUsername}) dibuat oleh admin.`);
+    req.flash('success', `Akun Panitia TPS "${cleanNama}" (@${cleanUsername}) berhasil dibuat.`);
+    res.redirect('/admin/panitia');
+  } catch (e) {
+    req.flash('error', 'Gagal menambahkan panitia: ' + (e.code === 'P2002' ? 'Username sudah digunakan.' : e.message));
+    res.redirect('/admin/panitia');
+  }
+};
+
+exports.doDeletePanitia = async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user || user.role !== 'PANITIA_TPS') {
+      req.flash('error', 'Akun panitia tidak ditemukan.');
+      return res.redirect('/admin/panitia');
+    }
+    await prisma.user.delete({ where: { id } });
+    await logAudit(req, 'DELETE_PANITIA', `Akun panitia "${user.nama}" (@${user.username}) dihapus oleh admin.`);
+    req.flash('success', `Akun panitia "${user.nama}" berhasil dihapus.`);
+    res.redirect('/admin/panitia');
+  } catch (e) {
+    req.flash('error', 'Gagal menghapus panitia: ' + e.message);
+    res.redirect('/admin/panitia');
+  }
+};

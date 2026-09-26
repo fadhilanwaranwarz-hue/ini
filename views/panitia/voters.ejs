@@ -8,10 +8,10 @@
         <i class="fa-solid fa-user-check text-emerald-600 mr-2"></i>
         Meja Verifikasi Pemilih &amp; Penerbitan Token
       </h1>
-      <p class="text-xs text-slate-500">Pastikan siswa hadir secara fisik di TPS, cocokkan kartu pelajar/NISN, lalu terbitkan token sekali pakai.</p>
+      <p class="text-xs text-slate-500">Pastikan siswa hadir secara fisik di TPS, cocokkan kartu pelajar/NISN, daftarkan jika belum tercatat, lalu terbitkan token sekali pakai.</p>
     </div>
 
-    <div>
+    <div class="flex items-center space-x-2 flex-wrap gap-2">
       <% if (session && session.isOpen) { %>
         <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-300">
           <i class="fa-solid fa-circle-check mr-1.5 text-emerald-600"></i>Sesi Buka - Siap Terbitkan Token
@@ -21,6 +21,12 @@
           <i class="fa-solid fa-circle-xmark mr-1.5 text-rose-600"></i>Sesi Ditutup - Token Tidak Dapat Dibuat
         </span>
       <% } %>
+
+      <button type="button" onclick="document.getElementById('modalTambahPemilihPanitia').classList.remove('hidden')"
+        class="inline-flex items-center px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition">
+        <i class="fa-solid fa-user-plus mr-1.5"></i>
+        <span>Tambah Pemilih Baru</span>
+      </button>
     </div>
   </div>
 
@@ -31,7 +37,7 @@
         <i class="fa-solid fa-magnifying-glass text-emerald-600 mr-2"></i>
         Cek Cepat Keabsahan DPT (Scan / Masukkan NISN)
       </h3>
-      <p class="text-xs text-slate-500 mb-3">Ketikkan 10 digit NISN pemilih untuk mengecek apakah sudah pernah memilih atau belum.</p>
+      <p class="text-xs text-slate-500 mb-3">Ketikkan 10 digit NISN pemilih untuk mengecek apakah sudah pernah memilih atau belum. Jika belum ada di daftar, silakan gunakan tombol <strong>Tambah Pemilih Baru</strong>.</p>
       
       <form action="/panitia/voters/verifikasi" method="POST" class="flex gap-2">
         <input type="text" name="nisn" required placeholder="Contoh: 0051234001"
@@ -49,7 +55,7 @@
   <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
     <div class="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div>
-        <h3 class="text-sm font-bold text-slate-800">Daftar Pemilih TPS</h3>
+        <h3 class="text-sm font-bold text-slate-800">Daftar Pemilih TPS (<%= voters.length %> Terdaftar)</h3>
         <p class="text-[11px] text-slate-400">Tekan tombol "Generate Token" saat siswa sudah berada di depan meja petugas TPS.</p>
       </div>
       <input type="text" id="voterSearch" onkeyup="filterVoterTable()" placeholder="Ketik nama / NISN / kelas..."
@@ -132,6 +138,69 @@
         </tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- Modal Tambah Pemilih Baru (Panitia TPS) -->
+<div id="modalTambahPemilihPanitia" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+      <div class="flex items-center space-x-2">
+        <div class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">
+          <i class="fa-solid fa-user-plus"></i>
+        </div>
+        <div>
+          <h3 class="text-sm font-extrabold text-slate-800">Tambah Pemilih Baru di TPS</h3>
+          <p class="text-[11px] text-slate-400">Daftarkan siswa yang belum tercantum di DPT</p>
+        </div>
+      </div>
+      <button type="button" onclick="document.getElementById('modalTambahPemilihPanitia').classList.add('hidden')"
+        class="text-slate-400 hover:text-slate-600 text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <form action="/panitia/voters/add" method="POST" class="p-5 space-y-4">
+      <div>
+        <label for="p_nisn" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+          Nomor Induk Siswa Nasional (NISN) <span class="text-red-500">*</span>
+        </label>
+        <input type="text" id="p_nisn" name="nisn" required maxlength="20"
+          class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+          placeholder="Contoh: 0051234099">
+        <p class="text-[10px] text-slate-400 mt-1">Cek kartu pelajar siswa untuk memastikan nomor NISN benar.</p>
+      </div>
+
+      <div>
+        <label for="p_nama" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+          Nama Lengkap Siswa <span class="text-red-500">*</span>
+        </label>
+        <input type="text" id="p_nama" name="nama" required
+          class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+          placeholder="Contoh: Muhammad Farhan Al-Fatih">
+      </div>
+
+      <div>
+        <label for="p_kelas" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+          Kelas / Jurusan <span class="text-red-500">*</span>
+        </label>
+        <input type="text" id="p_kelas" name="kelas" required
+          class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+          placeholder="Contoh: XII IPA 1 atau X TKJ 2">
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
+        <button type="button" onclick="document.getElementById('modalTambahPemilihPanitia').classList.add('hidden')"
+          class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 transition">
+          Batal
+        </button>
+        <button type="submit"
+          class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center space-x-1.5">
+          <i class="fa-solid fa-floppy-disk"></i>
+          <span>Daftarkan Siswa</span>
+        </button>
+      </div>
+    </form>
   </div>
 </div>
 

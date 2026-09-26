@@ -56,6 +56,30 @@
       </div>
     </div>
 
+    <!-- Quick Action Bar for Admin -->
+    <div class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-2xl p-4 shadow-lg flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center space-x-2">
+        <span class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-sm font-bold shadow">
+          <i class="fa-solid fa-bolt"></i>
+        </span>
+        <div>
+          <h4 class="text-xs font-bold text-slate-100">Aksi Cepat Admin</h4>
+          <p class="text-[11px] text-slate-400">Pusat konfigurasi pemilihan OSIS &amp; MPK</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2 flex-wrap gap-2">
+        <a href="/admin/candidates" class="inline-flex items-center px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/10 transition">
+          <i class="fa-solid fa-pen-to-square mr-1.5 text-indigo-400"></i>Kelola / Edit Paslon
+        </a>
+        <a href="/admin/voters" class="inline-flex items-center px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/10 transition">
+          <i class="fa-solid fa-user-plus mr-1.5 text-teal-400"></i>Tambah / DPT Pemilih
+        </a>
+        <a href="/admin/panitia" class="inline-flex items-center px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow transition">
+          <i class="fa-solid fa-user-shield mr-1.5"></i>Kelola Panitia TPS
+        </a>
+      </div>
+    </div>
+
     <!-- Statistik Cards (4 Kolom) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- Card 1: Total DPT -->
@@ -168,11 +192,18 @@
                     </p>
                   </div>
                 </div>
-                <div class="text-right">
-                  <span class="text-base font-black text-slate-800">
-                    <%= c.suaraCount %>
-                  </span>
-                  <span class="text-xs text-slate-500 font-semibold">(<%= pct %>%)</span>
+                <div class="text-right flex items-center space-x-2">
+                  <div>
+                    <span class="text-base font-black text-slate-800">
+                      <%= c.suaraCount %>
+                    </span>
+                    <span class="text-xs text-slate-500 font-semibold">(<%= pct %>%)</span>
+                  </div>
+                  <a href="/admin/candidates/<%= c.id %>/edit" title="Edit Paslon 0<%= c.nomorUrut %>"
+                    class="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] rounded-lg border border-indigo-200 transition flex items-center space-x-1">
+                    <i class="fa-solid fa-pen-to-square text-[10px]"></i>
+                    <span>Edit</span>
+                  </a>
                 </div>
               </div>
               <!-- Progress Bar -->
